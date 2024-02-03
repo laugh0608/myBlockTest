@@ -38,7 +38,7 @@ class ATL_NO_VTABLE CMyBlock :
 // 创建一个全局端口数的实例
 private:
 	CComObject<CMyBlockPortsArray> *myPortArray;	// 创建一个端口数组的实例
-	CComObject<CMyParameterArray> *parameterArray;	// 创建一个parameters数组的实例
+	CComObject<CMyParameterArray> *myParameterArray;	// 创建一个parameters数组的实例
 
 public:
 	CMyBlock()
@@ -48,12 +48,11 @@ public:
 
 		// 实例化头部创建的myPortArray，获取到ports参数数组
 		CComObject<CMyBlockPortsArray>::CreateInstance(&myPortArray);
-		// 添加引用计数函数
-		myPortArray->AddRef();
+		myPortArray->AddRef();	// 添加引用计数函数
+
 		// 实例化头部创建的parameterArray，获取到parameters参数数组
-		CComObject<CMyParameterArray>::CreateInstance(&parameterArray);
-		// 添加引用计数函数
-		parameterArray->AddRef();
+		CComObject<CMyParameterArray>::CreateInstance(&myParameterArray);
+		myParameterArray->AddRef();	// 添加引用计数函数
 	}
 
 DECLARE_REGISTRY_RESOURCEID(106)
@@ -89,17 +88,20 @@ public:
 public:
 	STDMETHOD(get_ports)(LPDISPATCH *ports)
 	{
+		// 创建数组
+		//CComObject<CMyBlockPortsArray> *p;
 		// 实例化头部创建的myPortArray，获取到端口数组
-		//CComObject<CMyBlockPortsArray>::CreateInstance(&myPortArray);
+		//CComObject<CMyBlockPortsArray>::CreateInstance(&p);
+		// 将pIDispatch指针指向ports参数，给myPortArray赋值
+		//p->QueryInterface(IID_IDispatch, (LPVOID*)ports);
 
 		// Get_ports步骤开始
 		//MessageBox(NULL, L"Get_ports, Start", L"", MB_OK);
 
 		// 如果是空值，则拦截传过来的*ports
 		if (ports == NULL) return E_FAIL;
-		//if (*ports == NULL) return E_FAIL;
 		
-		// 将pIDispatch指针指向ports参数，给myPortArray赋值
+		//CComObject<CMyBlockPortsArray>::CreateInstance(&myPortArray);
 		//myPortArray->QueryInterface(IID_IDispatch, (LPVOID*)ports);
 		// 更改传值的方式，直接强制转化为ICapeCollection指针
 		*ports = (ICapeCollection*)myPortArray;
@@ -111,13 +113,13 @@ public:
 		return S_OK;
 	}
 
-	STDMETHOD(get_ValStatus)(CapeValidationStatus *isValid)
+	STDMETHOD(get_ValStatus)(CapeValidationStatus *status)
 	{
 		// Get_Val_Status步骤
 		//MessageBox(NULL, L"Get_Val_Status, OK", L"", MB_OK);
 
 		// 获取当前端口的状态
-		*isValid = CapeValidationStatus::CAPE_VALID;	// 默认端口可用
+		*status = CapeValidationStatus::CAPE_VALID;	// 默认端口可用
 
 		return S_OK;
 	}
@@ -129,16 +131,17 @@ public:
 		HRESULT hr;
 		std::wstring error;
 		CVariant myValue;
+		//myVariantValue()函数在Variant.h文件中定义返回value值
 		// 获取温度
-		hr = myPortArray->getInlet()->GetOverallProp(CBSTR(_T("temperature")), NULL, &myValue.value);
+		hr = myPortArray->getInlet()->GetOverallProp(CBSTR(_T("temperature")), NULL, &myValue.myVariantValue());
 		myValue.CheckArray(VT_R8, error);
 		temperature = myValue.GetDoubleAt(0);
 		// 获取压力
-		hr = myPortArray->getInlet()->GetOverallProp(CBSTR(_T("pressure")), NULL, &myValue.value);
+		hr = myPortArray->getInlet()->GetOverallProp(CBSTR(_T("pressure")), NULL, &myValue.myVariantValue());
 		myValue.CheckArray(VT_R8, error);
 		pressure = myValue.GetDoubleAt(0);
 		// 获取总摩尔流量
-		hr = myPortArray->getInlet()->GetOverallProp(CBSTR(_T("totalFlow")), CBSTR(_T("mole")), &myValue.value);
+		hr = myPortArray->getInlet()->GetOverallProp(CBSTR(_T("totalFlow")), CBSTR(_T("mole")), &myValue.myVariantValue());
 		myValue.CheckArray(VT_R8, error);
 		totalMoleFlow = myValue.GetDoubleAt(0);
 		// 获取组分的摩尔分率
@@ -205,12 +208,12 @@ public:
 		// 定义临时变量
 		CVariant flashSpec1, flashSpec2;
 		CBSTR overall(L"overall");
-		// 获取温度
+		// 温度闪蒸
 		flashSpec1.MakeArray(3, VT_BSTR);
 		flashSpec1.AllocStringAt(0, L"temperature");
 		flashSpec1.SetStringAt(1, NULL);
 		flashSpec1.SetStringAt(2, overall);
-		// 获取压力
+		// 压力闪蒸
 		flashSpec2.MakeArray(3, VT_BSTR);
 		flashSpec2.AllocStringAt(0, L"pressure");
 		flashSpec2.SetStringAt(1, NULL);
@@ -247,8 +250,8 @@ public:
 		GetOverallTPFlowComposition(temperature, pressure, totalMoleFlow, moleComposition);
 
 		// 临时定义参数部分
-		temperature = 300;	// 默认单位为K
-		pressure = 201325;	// 默认单位为Pa
+		temperature = 400;	// 默认单位为K
+		pressure = 301325;	// 默认单位为Pa
 
 		// 设置出口流股物流对象参数
 		SetOverallTPFlowCompositionAndFlash(temperature, pressure, totalMoleFlow, moleComposition);
@@ -256,7 +259,7 @@ public:
 		return S_OK;
 	}
 
-	STDMETHOD(Validate)(BSTR *message, VARIANT_BOOL *isValidate)
+	STDMETHOD(Validate)(BSTR *message, VARIANT_BOOL *status)
 	{
 		// Validate步骤
 		//MessageBox(NULL, L"Validate, OK", L"", MB_OK);
@@ -264,7 +267,7 @@ public:
 		// 和get_ValStatus函数比，Validate是带有检查功能的获取端口状态
 		CBSTR myMsg(L"NO ERROR");
 		*message = myMsg;
-		*isValidate = -1;	// 0==FALSE，-1==TURE
+		*status = TRUE;
 
 		return S_OK;
 	}
@@ -276,17 +279,18 @@ public:
 	{
 		// 该函数是与灵敏度分析、工况分析和aspen下的代码调用参数功能相关
 		
+		// Get_parameters步骤
+		//MessageBox(NULL, L"Get_parameters, OK", L"", MB_OK);
+		
 		// 实例化头部创建的parameterArray，获取到parameters参数数组
 		//CComObject<CMyParameterArray>::CreateInstance(&parameterArray);
 
-		// Get_parameters步骤
-		//MessageBox(NULL, L"Get_parameters, OK", L"", MB_OK);
-
-		// 将pIDispatch指针指向parameters参数，给parameterArray赋值
-		//parameterArray->QueryInterface(IID_IDispatch, (LPVOID*)parameters);
+		//*parameters = NULL;
+		// 将pIDispatch指针指向parameters参数，给myParameterArray赋值
+		//myParameterArray->QueryInterface(IID_IDispatch, (LPVOID*)parameters);
 		// 更改传值的方式，直接强制转化为ICapeCollection指针
-		*parameters = (ICapeCollection*)parameterArray;
-		parameterArray->AddRef();
+		*parameters = (ICapeCollection*)myParameterArray;
+		myParameterArray->AddRef();
 
 		return S_OK;
 	}
@@ -328,7 +332,7 @@ public:
 	{
 		// 该函数就是双击之后的逻辑，编辑该单元模块
 		// 但这里不做实现，仅使用消息弹窗来测试双击编辑的功能
-		//MessageBox(NULL, L"Hello World!", L"By laugh", MB_OK);
+		MessageBox(NULL, L"Hello World!", L"By laugh", MB_OK);
 
 		return S_OK;
 	}
@@ -336,11 +340,12 @@ public:
 
 // ICapeIdentification Methods
 public:
-	STDMETHOD(get_ComponentName)(BSTR *ComponentName)
+	STDMETHOD(get_ComponentName)(BSTR *componentName)
 	{
 		// 获取单元模块的名字
-		CBSTR nam(SysAllocString(CA2W("Test Block")));	// string转const OLECHAR*类型
-		*ComponentName = nam;
+		//CBSTR nam(SysAllocString(CA2W("Test Block")));	// string转const OLECHAR*类型
+		CBSTR nam(SysAllocString(L"Test Block"));
+		*componentName = nam;
 
 		return S_OK;
 	}
@@ -351,11 +356,12 @@ public:
 		return S_OK;
 	}
 
-	STDMETHOD(get_ComponentDescription)(BSTR *ComponentDescription)
+	STDMETHOD(get_ComponentDescription)(BSTR *componentDescription)
 	{
 		// 获取单元模块的描述
-		CBSTR des(SysAllocString(CA2W("Test Block Description")));	// string转const OLECHAR*类型
-		*ComponentDescription = des;
+		//CBSTR des(SysAllocString(CA2W("Test Block Description")));	// string转const OLECHAR*类型
+		CBSTR des(SysAllocString(L"Test Block Description"));	// string转const OLECHAR*类型
+		*componentDescription = des;
 
 		return S_OK;
 	}

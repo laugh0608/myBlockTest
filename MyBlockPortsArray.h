@@ -50,7 +50,9 @@ public:
 	{
 		// 实例化端口1，2
 		CComObject<CBlockPort>::CreateInstance(&port1);
+		port1->AddRef();
 		CComObject<CBlockPort>::CreateInstance(&port2);
+		port2->AddRef();
 		// 定义端口方向并传给BlockPort中的SetDirection()函数
 		port1->SetDirection(CapePortDirection::CAPE_INLET);		// 端口1为进口
 		port2->SetDirection(CapePortDirection::CAPE_OUTLET);	// 端口2为出口
@@ -58,6 +60,7 @@ public:
 		port1->SetNamAndDes(L"Inlet", L"Inlet Port");
 		port2->SetNamAndDes(L"Outlet", L"Outlet Port");
 	}
+
 
 DECLARE_REGISTRY_RESOURCEID(109)
 
@@ -89,7 +92,7 @@ public:
 
 // ICapeCollection Methods
 public:
-	STDMETHOD(Item)(VARIANT id, LPDISPATCH *Item)
+	STDMETHOD(Item)(VARIANT id, LPDISPATCH *item)
 	{
 		// 给端口1赋值
 		//port1->QueryInterface(IID_IDispatch, (LPVOID*)Item);
@@ -100,22 +103,29 @@ public:
 			if (id.lVal == 1)
 			{
 				// 端口1赋值
-				port1->QueryInterface(IID_IDispatch, (LPVOID*)Item);
+				port1->QueryInterface(IID_IDispatch, (LPVOID*)item);
 				port1->AddRef();
 			}
 			else
 			{
 				// 端口2赋值
-				port2->QueryInterface(IID_IDispatch, (LPVOID*)Item);
+				port2->QueryInterface(IID_IDispatch, (LPVOID*)item);
 				port2->AddRef();
 			}
 		}
-		//else if(i.CheckArray(VT_BSTR, error))	// 判断ID是个字符串
-		//{
-		//	CBSTR nam = i.GetStringAt(0);	// 取出端口1的ID
-		//	if(CBSTR::Same(L"Inlet", nam)) port1->QueryInterface(IID_IDispatch, (LPVOID*)Item);
-		//	else port2->QueryInterface(IID_IDispatch, (LPVOID*)Item);
-		//}
+		else if(id.vt == VT_BSTR)	// 判断ID是个字符串
+		{
+			if (CBSTR::Same(L"Inlet", id.bstrVal))	// 上面public部分设置的字段
+			{
+				port1->QueryInterface(IID_IDispatch, (LPVOID*)item);
+				port1->AddRef();
+			}
+			else
+			{
+				port2->QueryInterface(IID_IDispatch, (LPVOID*)item);
+				port2->AddRef();
+			}
+		}
 
 		return S_OK;
 	}
@@ -131,11 +141,12 @@ public:
 
 // ICapeIdentification Methods
 public:
-	STDMETHOD(get_ComponentName)(BSTR *ComponentName)
+	STDMETHOD(get_ComponentName)(BSTR *componentName)
 	{
 		// 获取端口数组的名字
-		CBSTR nam(SysAllocString(CA2W("My Block Ports Array")));	// string转const OLECHAR*类型
-		*ComponentName = nam;
+		//CBSTR nam(SysAllocString(CA2W("My Block Ports Array")));	// string转const OLECHAR*类型
+		CBSTR nam(SysAllocString(L"My Block Ports Array"));
+		*componentName = nam;
 
 		return S_OK;
 	}
@@ -146,11 +157,12 @@ public:
 		return S_OK;
 	}
 
-	STDMETHOD(get_ComponentDescription)(BSTR *ComponentDescription)
+	STDMETHOD(get_ComponentDescription)(BSTR *componentDescription)
 	{
 		// 获取端口数组的描述
-		CBSTR des(SysAllocString(CA2W("My Block Ports Array Description")));	// string转const OLECHAR*类型
-		*ComponentDescription = des;
+		//CBSTR des(SysAllocString(CA2W("My Block Ports Array Description")));	// string转const OLECHAR*类型
+		CBSTR des(SysAllocString(L"My Block Ports Array Description"));
+		*componentDescription = des;
 
 		return S_OK;
 	}

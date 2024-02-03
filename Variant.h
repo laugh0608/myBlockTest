@@ -24,9 +24,7 @@ class CVariant
 {
 
 private:
-
-    // 解决MyBlock.h中获取流股参数的value是私有的无法访问情况
-    //VARIANT value; /*!< the value contained in this class */
+    VARIANT value; /*!< the value contained in this class */
 
     BOOL mustDelete; /*!< keeps track of whether the value data is owned by this class */
     LONG count; /*!< number of elements in an array */
@@ -36,7 +34,10 @@ private:
 
 public:
     // 解决MyBlock.h中获取流股参数的value是私有的无法访问情况
-    VARIANT value;
+    VARIANT& myVariantValue()
+    {
+        return value;
+    }
 
 	//! Constructor.
     /*!
